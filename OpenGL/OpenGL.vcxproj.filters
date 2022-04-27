@@ -123,5 +123,9 @@
     <None Include="res\shaders\fragment_light.glsl" />
     <None Include="res\shaders\vertex_light.glsl" />
     <None Include="res\shaders\vertex.glsl" />
+    <None Include="res\shaders\fragment_mat.glsl" />
+    <None Include="res\shaders\vertex_mat.glsl" />
+    <None Include="res\shaders\fragment_mat_map.glsl" />
+    <None Include="res\shaders\vertex_mat_map.glsl" />
   </ItemGroup>
 </Project>

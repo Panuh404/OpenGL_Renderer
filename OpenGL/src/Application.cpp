@@ -12,6 +12,7 @@
 
 #include "Core/Shader.h"
 #include "Core/VertexArray.h"
+#include "Core/Texture.h"
 #include "Core/Buffer.h"
 #include "Core/Camera.h"
 
@@ -20,17 +21,19 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xPos, double yPos);
 void scroll_callback(GLFWwindow* window, double xOffset, double yOffset);
 void processInput(GLFWwindow* window);
+void camera_look(GLFWwindow* window, bool look);
 
 // Settings
 const uint32_t screenWidth = 800;
 const uint32_t screenHeight = 600;
+bool bCameraInput = true;
+bool bCameraMovement = true;
 
 // Camera Stuff
 Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
 float lastX = screenWidth / 2.0f;
 float lastY = screenHeight / 2.0f;
 bool firstMouse = true;
-bool mouseCursorEnabled = false;
 
 // Timing
 float deltaTime = 0.0f;
@@ -57,15 +60,13 @@ int main()
 		return -1;
 	}
 	glfwMakeContextCurrent(window);
+	glfwSwapInterval(1); // VSync On
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
 	// Tell GLFW to Capture Mouse
-	if (mouseCursorEnabled)
-	{
-		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-		glfwSetCursorPosCallback(window, mouse_callback);
-		glfwSetScrollCallback(window, scroll_callback);
-	}
+	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	glfwSetCursorPosCallback(window, mouse_callback);
+	glfwSetScrollCallback(window, scroll_callback);
 
 	// Initialize Glad
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
@@ -74,11 +75,21 @@ int main()
 		return -1;
 	}
 
+	glViewport(0, 0, screenWidth, screenHeight);
+
 	// Setup Dear ImGui Context
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
 	ImGui::StyleColorsDark();
+	ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+
+	ImGuiStyle& style = ImGui::GetStyle();
+	if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+	{
+		style.WindowRounding = 0.0f;
+		style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+	}
 
 	// Setup Platform/Renderer bindings
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
@@ -88,53 +99,57 @@ int main()
 
 	//////////////////////////////////////////////////////////////////
 	float vertices[] = {
-	// Cube				  // Normals
-	-0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-	 0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-	 0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-	 0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-	-0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-	-0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+		// positions          // normals           // texture coords
+        -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f,  0.0f,
+         0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f,  0.0f,
+         0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f,  1.0f,
+         0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f,  1.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f,  1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f,  0.0f,
 
-	-0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-	 0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-	 0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-	 0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-	-0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-	-0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,  0.0f,  0.0f,
+         0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,  1.0f,  0.0f,
+         0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,  1.0f,  1.0f,
+         0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,  1.0f,  1.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,  0.0f,  1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,  0.0f,  0.0f,
 
-	-0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
-	-0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
-	-0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
-	-0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
-	-0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
-	-0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  1.0f,  0.0f,
+        -0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  1.0f,  1.0f,
+        -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  0.0f,  1.0f,
+        -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  0.0f,  1.0f,
+        -0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  0.0f,  0.0f,
+        -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  1.0f,  0.0f,
 
-	 0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
-	 0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
-	 0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
-	 0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
-	 0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
-	 0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+         0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  1.0f,  0.0f,
+         0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  1.0f,  1.0f,
+         0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  0.0f,  1.0f,
+         0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  0.0f,  1.0f,
+         0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  0.0f,  0.0f,
+         0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  1.0f,  0.0f,
 
-	-0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
-	 0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
-	 0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
-	 0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
-	-0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
-	-0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  0.0f,  1.0f,
+         0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  1.0f,  1.0f,
+         0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  1.0f,  0.0f,
+         0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  1.0f,  0.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  0.0f,  0.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  0.0f,  1.0f,
 
-	-0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
-	 0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
-	 0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
-	 0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
-	-0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
-	-0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f
-	};
+        -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  0.0f,  1.0f,
+         0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  1.0f,  1.0f,
+         0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  1.0f,  0.0f,
+         0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  1.0f,  0.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  0.0f,  0.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  0.0f,  1.0f
+    };
 
 	const Shader shader("res/shaders/vertex.glsl", "res/shaders/fragment.glsl");
 	const Shader shader_tex("res/shaders/vertex_tex.glsl", "res/shaders/fragment_tex.glsl");
 	const Shader shader_light("res/shaders/vertex_light.glsl", "res/shaders/fragment_light.glsl");
+	const Shader shader_maps("res/shaders/vertex_mat_map.glsl", "res/shaders/fragment_mat_map.glsl");
+	
+	const Texture diffuseMap("res/textures/container2.png");
+	const Texture specularMap("res/textures/container2_specular.png");
 
 	const VertexBuffer VBO(vertices, sizeof(vertices));
 	const VertexArray cubeVAO;
@@ -147,11 +162,14 @@ int main()
 	VBO.Bind();
 
 	// position attribute
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
 	glEnableVertexAttribArray(0);
 	// normal attribute
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
 	glEnableVertexAttribArray(1);
+	// texture attribute
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+	glEnableVertexAttribArray(2);
 
 	////////////////
 	// Light Cube //
@@ -160,13 +178,18 @@ int main()
 	VBO.Bind();
 
 	// Position Attribute
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
 	glEnableVertexAttribArray(0);
 
-	// Camera Movement Controller
-	mouseCursorEnabled = false;
+	// Shader light properties
+	glm::vec3 ambientLight = { 0.5f, 0.5f, 0.5f };
+	glm::vec3 diffuseLight = { 0.2f, 0.2f, 0.2f };
+	glm::vec3 specularLight = { 1.0f,1.0f,1.0f };
+	float shininess = 64.0f;
 
-	//////////////////////////////////////////////////////////////////
+	shader_maps.Bind();
+	shader_maps.SetUniformInt("material.diffuse", 0);
+	shader_maps.SetUniformInt("material.specular", 1);
 
 	// Render Loop
 	while(!glfwWindowShouldClose(window))
@@ -188,22 +211,30 @@ int main()
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
-		shader_light.Bind();
-		shader_light.SetUniformFloat3("objectColor", { 1.0f, 0.5f, 0.31f});
-		shader_light.SetUniformFloat3("lightColor" , { 1.0f, 1.0f, 1.0f });
-		shader_light.SetUniformFloat3("lightPos", lightPos);
-		shader_light.SetUniformFloat3("viewPos", camera.Position);
+		// Shader settings
+		shader_maps.Bind();
+		shader_maps.SetUniformFloat3("light.position" , lightPos);
+		shader_maps.SetUniformFloat3("viewPos", camera.Position);
+
+		shader_maps.SetUniformFloat3("light.ambient", ambientLight);
+		shader_maps.SetUniformFloat3("light.diffuse", diffuseLight);
+		shader_maps.SetUniformFloat3("light.specular", specularLight);
+
+		shader_maps.SetUniformFloat("material.shininess", shininess);
 
 		// View/projection transformation
 		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)screenWidth / (float)screenHeight, 0.1f, 100.0f);
 		glm::mat4 view = camera.GetViewMatrix();
-		shader_light.SetUniformMat4("projection", projection);
-		shader_light.SetUniformMat4("view", view);
+		shader_maps.SetUniformMat4("projection", projection);
+		shader_maps.SetUniformMat4("view", view);
 
 		// world transformation
 		glm::mat4 model = glm::mat4(1.0f);
 		model = translate(model, modelpos);
-		shader_light.SetUniformMat4("model", model);
+		shader_maps.SetUniformMat4("model", model);
+
+		diffuseMap.Bind(0);
+		specularMap.Bind(1);
 
 		// draw cube
 		cubeVAO.Bind();
@@ -220,14 +251,22 @@ int main()
 
 		lightVAO.Bind();
 		glDrawArrays(GL_TRIANGLES, 0, 36);
-
-		ImGui::Begin("Testing");
-		ImGui::Text("Light Cube");
-		ImGui::SliderFloat3("Position Light", glm::value_ptr(lightPos), -5, 5);
-		ImGui::Text("Cube");
-		ImGui::SliderFloat3("Position Cube", value_ptr(modelpos), -5, 5);
+	
+		ImGui::Begin("Test Menu");
+		{
+			if (ImGui::Button("Camera Look"))
+			{
+				camera_look(window, true);
+			}
+			ImGui::Separator();
+			ImGui::Text("Cube Properties");
+			if (ImGui::CollapsingHeader("Position"))
+			{
+				ImGui::SliderFloat3("Position(Light)", value_ptr(lightPos), -5, 5);
+				ImGui::SliderFloat3("Position(Cube)", value_ptr(modelpos), -5, 5);
+			}
+		}
 		ImGui::End();
-
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
@@ -236,10 +275,11 @@ int main()
 		glfwPollEvents();
 	}
 
+	// Cleanup
 	ImGui_ImplOpenGL3_Shutdown();
 	ImGui_ImplGlfw_Shutdown();
 	ImGui::DestroyContext();
-
+	glfwDestroyWindow(window);
 	glfwTerminate();
 	return 0;
 }
@@ -256,10 +296,31 @@ void processInput(GLFWwindow* window)
 		glfwSetWindowShouldClose(window, true);
 	}
 
-	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) camera.ProcessKeyboard(FORWARD, deltaTime);
-	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) camera.ProcessKeyboard(BACKWARD, deltaTime);
-	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) camera.ProcessKeyboard(LEFT, deltaTime);
-	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) camera.ProcessKeyboard(RIGHT, deltaTime);
+	if(glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
+	{
+		camera_look(window, false);
+	}
+
+	if(bCameraMovement)
+	{
+		if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) camera.ProcessKeyboard(FORWARD, deltaTime);
+		if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) camera.ProcessKeyboard(BACKWARD, deltaTime);
+		if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) camera.ProcessKeyboard(LEFT, deltaTime);
+		if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) camera.ProcessKeyboard(RIGHT, deltaTime);
+	}
+}
+
+void camera_look(GLFWwindow* window, bool look) {
+	if(look)
+	{
+		bCameraInput = true;
+		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+	}
+	if(!look)
+	{
+		bCameraInput = false;
+		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+	}
 }
 
 void mouse_callback(GLFWwindow* window, double xPos, double yPos)
@@ -278,7 +339,10 @@ void mouse_callback(GLFWwindow* window, double xPos, double yPos)
 
 	lastX = position.x;
 	lastY = position.y;
-	camera.ProcessMouseMovement(xoffset, yoffset);
+	if(bCameraInput)
+	{
+		camera.ProcessMouseMovement(xoffset, yoffset);
+	}
 }
 
 void scroll_callback(GLFWwindow* window, double xOffset, double yOffset)

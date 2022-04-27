@@ -123,9 +123,13 @@
     <ClInclude Include="vendor\stb_image\stb_image.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="res\shaders\fragment_mat.glsl" />
+    <None Include="res\shaders\fragment_mat_map.glsl" />
     <None Include="res\shaders\fragment_tex.glsl" />
     <None Include="res\shaders\fragment_light.glsl" />
     <None Include="res\shaders\vertex.glsl" />
+    <None Include="res\shaders\vertex_mat.glsl" />
+    <None Include="res\shaders\vertex_mat_map.glsl" />
     <None Include="res\shaders\vertex_tex.glsl" />
     <None Include="res\shaders\vertex_light.glsl" />
   </ItemGroup>
