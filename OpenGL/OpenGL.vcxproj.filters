@@ -66,6 +66,12 @@
     <ClCompile Include="vendor\imgui\imgui_draw.cpp">
       <Filter>Source Files\imgui</Filter>
     </ClCompile>
+    <ClCompile Include="src\Core\Mesh.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Core\Model.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Core\Shader.h">
@@ -116,6 +122,12 @@
     <ClInclude Include="vendor\imgui\imgui.h">
       <Filter>Header Files\imgui</Filter>
     </ClInclude>
+    <ClInclude Include="src\Core\Mesh.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Core\Model.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="res\shaders\fragment_tex.glsl" />
@@ -127,5 +139,7 @@
     <None Include="res\shaders\vertex_mat.glsl" />
     <None Include="res\shaders\fragment_mat_map.glsl" />
     <None Include="res\shaders\vertex_mat_map.glsl" />
+    <None Include="res\shaders\fragment_model.glsl" />
+    <None Include="res\shaders\vertex_model.glsl" />
   </ItemGroup>
 </Project>
